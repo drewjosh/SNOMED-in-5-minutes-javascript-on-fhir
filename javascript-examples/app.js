@@ -30,6 +30,8 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
     $scope.findByConceptIdUrl = null;
     $scope.findByQueryWithFitlerResult = null;
     $scope.findByQueryWithFilterUrl = null;
+    $scope.findDescendantsByConceptIdResult = null;
+    $scope.findDescendantsByConceptIdUrl = null;
 
     // Clear error
     $scope.clearError = function() {
@@ -48,6 +50,8 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
         $scope.findByConceptIdUrl = null;
         $scope.findByQueryWithFitlerResult = null;
         $scope.findByQueryWithFilterUrl = null;
+        $scope.findDescendantsByConceptIdResult = null;
+        $scope.findDescendantsByConceptIdUrl = null;
     }
 
     // Find by query and set the scrollable raw json result
@@ -125,6 +129,25 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
                 console.debug('  matches = ', response.data);
                 $scope.findByQueryWithFilterResult = JSON.stringify(response.data, null, 2);
                 $scope.findByQueryWithFilterCt = response.data.totalElements;
+            },
+            // error
+            function(response) {
+                $scope.errorMsg = response;
+            });
+    }
+
+    // Find descendants of a concept by concept id and set the scrollable raw json result
+    $scope.findDescendantsByConceptId = function(conceptId, limit) {
+        console.debug('findDescendantsByConceptId, concept id: ' + conceptId + ', limit: ' + limit);
+
+        // Make the HTTP Call
+        $scope.findDescendantsByConceptIdUrl = baseUrl + '/' + edition + '/concepts/' + conceptId + '/descendants?stated=false&offset=0&limit=' + limit;
+        $http.get($scope.findDescendantsByConceptIdUrl).then(
+            // success
+            function(response) {
+                console.debug('  matches = ', response.data);
+                $scope.findDescendantsByConceptIdResult = JSON.stringify(response.data, null, 2);
+                $scope.findDescendantsByConceptIdCt = $scope.findDescendantsByConceptIdResult.total;
             },
             // error
             function(response) {

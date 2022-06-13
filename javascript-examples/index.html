@@ -172,6 +172,32 @@
             </td>
           </tr>
 
+          <!-- Find descendants of a concept by concept id -->
+          <tr>
+            <td style="vertical-align: top">
+              <form>
+                <input ng-model="conceptId" placeholder="e.g. 109152007" /> &nbsp;
+                <input ng-model="limit" placeholder="Limit: max 10000" /> &nbsp;
+                <button type="submit" class="btn btn-sm btn-primary"
+                  ng-click="findDescendantsByConceptId(conceptId,limit)">Find Descendants By Concept Id</button>
+                &nbsp;
+                <button ng-show="findDescendantsByConceptIdUrl"
+                  class="btn btn-sm btn-warning" ng-click="clear()">Clear</button>
+              </form>
+              <br />
+              <div ng-show="findDescendantsByConceptIdUrl">
+                <div>URL:</div>
+                <pre class="pre-xy-scrollable" ng-bind="findDescendantsByConceptIdUrl"></pre>
+              </div>
+              <div ng-show="findDescendantsByConceptIdResult">
+                <div>JSON Result: ({{findDescendantsByConceptIdCt}})</div>
+                <pre class="pre-xy-scrollable"
+                  style="background-color: lightgray"
+                  ng-bind="findDescendantsByConceptIdResult"></pre>
+              </div>
+            </td>
+          </tr>
+
         </table>
       </div>
       <!-- Make a spacer -->
