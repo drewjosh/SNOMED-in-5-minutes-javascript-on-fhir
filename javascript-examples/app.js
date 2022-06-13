@@ -9,7 +9,7 @@ var myApp = angular.module('myApp', ['ui.bootstrap']).config(function($rootScope
 // Declare top level URL vars
 var baseUrl = "https://browser.ihtsdotools.org/snowstorm/snomed-ct";
 var edition = "MAIN";
-var version = "2022-05-31";
+var version = "2020-03-09"; // 9th march 2020
 
 // Initialization of myApp
 myApp.run(['$rootScope', '$http', '$window', function($rootScope, $http, $window) {
@@ -18,6 +18,12 @@ myApp.run(['$rootScope', '$http', '$window', function($rootScope, $http, $window
 
 // Controller for the page
 myApp.controller('SimpleCtrl', function($scope, $http) {
+
+    $scope.edition = edition;
+    $scope.version = version;
+
+    // init descendants limit
+    $scope.limit = 10000;
 
     // Scope variables
     $scope.errorMsg = null;
@@ -143,7 +149,7 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
         console.debug('findDescendantsByConceptId, concept id: ' + conceptId + ', limit: ' + limit);
 
         // Make the HTTP Call
-        $scope.findDescendantsByConceptIdUrl = baseUrl + '/' + edition + '/concepts/' + conceptId + '/descendants?stated=false&offset=0&limit=' + limit;
+        $scope.findDescendantsByConceptIdUrl = baseUrl + '/' + edition + '/' + version + '/concepts/' + conceptId + '/descendants?stated=false&offset=0&limit=' + limit;
         $http.get($scope.findDescendantsByConceptIdUrl).then(
             // success
             function(response) {
