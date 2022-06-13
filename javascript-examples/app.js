@@ -210,7 +210,6 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
                             var newTotalResult= loadsOfDescendants.concat(response.data.items);
                             loadsOfDescendants = newTotalResult;
                         });
-                        console.log(loadsOfDescendants);
                         $scope.findLoadsDescendantsOnFHIR = $scope.convertDescendantsToFHIRFormat(loadsOfDescendants);
                         console.log("Final resul on FHIR (findLoadsOfDescendantsByConceptId):", $scope.findLoadsDescendantsOnFHIR);
                         $scope.$digest(); // force detect ui changes
