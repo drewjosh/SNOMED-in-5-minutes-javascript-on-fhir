@@ -156,7 +156,11 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
             $scope.findDescendantsOnFHIR = JSON.stringify(resultOnFHIR, null, 2);
             console.log("findDescendantsByConceptId Result on FHIR:", resultOnFHIR);
             $scope.$digest(); // force detect ui changes
-        }).catch(error => console.error('Error: ', error));
+        }).catch((error) => {
+            console.log('Error: ', error);
+            $scope.errorMsg = error.message
+            $scope.$digest();
+        });
     }
 
     // Find descendants of a concept by concept id and returns descendants in a Promise
@@ -169,57 +173,98 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
                 // success
                 function(response) {
                     console.log('Resolved descendants:', response.data.total);
-                    return resolve(response);
+                    if (response.data.total > limit) {
+                        response.data.parentConceptId = conceptId;
+                        reject({
+                            message: 'Limit exceeded',
+                            data: response
+                        });
+                    } else {
+                        resolve(response);
+                    }
                 },
                 // error
                 function(response) {
-                    $scope.errorMsg = response;
+                    reject(response);
                 });
         });
     }
 
     // Find descendants of a concept by concept id and set the scrollable raw json result (should be used for concepts with 10'000+ descendants)
     $scope.findLoadsOfDescendantsByConceptId = function(bigConceptId) {
-        console.debug('findLoadsOfDescendantsByConceptId, concept id: ' + bigConceptId);
+        $scope.findLoadsOfDescendants(bigConceptId).then((result) => {
+            $scope.findLoadsDescendantsOnFHIR = $scope.convertDescendantsToFHIRFormat(result);
+            console.log("Final resul on FHIR (findLoadsOfDescendantsByConceptId):", $scope.findLoadsDescendantsOnFHIR);
+            $scope.$digest(); // force detect ui changes
+        }).catch((error) => {
+            console.log('Error: ', error);
+            $scope.errorMsg = JSON.stringify(error);
+            $scope.$digest();
+        });
+    }
 
-        var loadsOfDescendants = new Array();
-        var descendantOfChildrenPromises = new Array();
-        var limit = 10000; // max
+    // find loads of it
+    $scope.findLoadsOfDescendants = function(bigConceptId) {
+        return new Promise((resolve, reject) => {
+            console.debug('findLoadsOfDescendantsByConceptId, concept id: ' + bigConceptId);
 
-        // 1 get children of concept
-        var childrenURL = baseUrl + '/browser/' + edition + '/' + version + '/concepts/' + bigConceptId + '/children?form=inferred&includeDescendantCount=true';
-        $http.get(childrenURL).then(
-            // success
-            function(response) {
-                var children = response.data;
-                
-                children.forEach(child => {
-                    // 1.1 add children to result
-                    loadsOfDescendants.push(child);
+            var loadsOfDescendants = new Array();
+            var descendantOfChildrenPromises = new Array();
+            var limit = 10000; // max
 
-                    // 2 get descendants of each child
-                    if (child.descendantCount > 0) {
-                        descendantOfChildrenPromises.push($scope.findDescendantsByConceptIdUtility(child.id, limit));
-                    }
-                });
+            // 1 get children of concept
+            var childrenURL = baseUrl + '/browser/' + edition + '/' + version + '/concepts/' + bigConceptId + '/children?form=inferred&includeDescendantCount=true';
+            $http.get(childrenURL).then(
+                // success
+                function(response) {
+                    var children = response.data;
+                    
+                    children.forEach(child => {
+                        // 1.1 add children to result
+                        loadsOfDescendants.push(child);
 
-                if (children.length > 0) {
-                    Promise.all(descendantOfChildrenPromises).then((responses) => {
-                        console.log('We are done calling all descendants.');
-                        responses.forEach(response => {
-                            var newTotalResult= loadsOfDescendants.concat(response.data.items);
-                            loadsOfDescendants = newTotalResult;
-                        });
-                        $scope.findLoadsDescendantsOnFHIR = $scope.convertDescendantsToFHIRFormat(loadsOfDescendants);
-                        console.log("Final resul on FHIR (findLoadsOfDescendantsByConceptId):", $scope.findLoadsDescendantsOnFHIR);
-                        $scope.$digest(); // force detect ui changes
+                        // 2 get descendants of each child
+                        if (child.descendantCount > 0) {
+                            descendantOfChildrenPromises.push($scope.findDescendantsByConceptIdUtility(child.id, limit));
+                        }
                     });
-                }
-            },
-            // error
-            function(response) {
-                $scope.errorMsg = response;
-            });
+
+                    if (children.length > 0) {
+                        Promise.allSettled(descendantOfChildrenPromises).then((results) => {
+                            console.log('We are done calling all descendants.');
+                            results.forEach(result => {
+                                if (result.status == 'fulfilled') {
+                                    var newTotalResult= loadsOfDescendants.concat(result.value.data.items);
+                                    loadsOfDescendants = newTotalResult;
+                                } else {
+                                    console.log("Failed result", result);
+                                    const failedConceptId = result.reason.data.data.parentConceptId
+                                    console.warn('Concept above limit: ', failedConceptId);
+                                    console.log('Trying to resolve again');
+
+                                    var descendantOfChildrenPromises = new Array();
+                                    descendantOfChildrenPromises.push($scope.findLoadsOfDescendants(failedConceptId));
+                                    Promise.all(descendantOfChildrenPromises).then((results) => {
+                                        results.forEach(result => {
+                                            var moreDescendants= loadsOfDescendants.concat(result.reason.data.data.items);
+                                            loadsOfDescendants = moreDescendants;
+                                        });
+                                        return resolve(loadsOfDescendants);
+                                    }).catch((error) => {
+                                        console.error('Error:', error);
+                                        reject(error);
+                                    });
+                                }
+                            });
+                            return resolve(loadsOfDescendants);
+                        });
+                    }
+                },
+                // error
+                function(response) {
+                    $scope.errorMsg = response;
+                });
+        });
     }
 
     // Converts result of findDescendantsByConceptId() into FHIR format
