@@ -37,8 +37,8 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
     $scope.findByQueryWithFitlerResult = null;
     $scope.findByQueryWithFilterUrl = null;
     $scope.findDescendantsByConceptIdResult = null;
-    $scope.findDescendantsByConceptIdUrl = null;
-    $scope.findDescendantsOnFHIR = null
+    $scope.findDescendantsOnFHIR = null;
+    $scope.findLoadsDescendantsOnFHIR = null;
 
     // Clear error
     $scope.clearError = function() {
@@ -58,8 +58,8 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
         $scope.findByQueryWithFitlerResult = null;
         $scope.findByQueryWithFilterUrl = null;
         $scope.findDescendantsByConceptIdResult = null;
-        $scope.findDescendantsByConceptIdUrl = null;
-        $scope.findDescendantsOnFHIR = null
+        $scope.findDescendantsOnFHIR = null;
+        $scope.findLoadsDescendantsOnFHIR = null;
     }
 
     // Find by query and set the scrollable raw json result
@@ -148,15 +148,74 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
     $scope.findDescendantsByConceptId = function(conceptId, limit) {
         console.debug('findDescendantsByConceptId, concept id: ' + conceptId + ', limit: ' + limit);
 
-        // Make the HTTP Call
-        $scope.findDescendantsByConceptIdUrl = baseUrl + '/' + edition + '/' + version + '/concepts/' + conceptId + '/descendants?stated=false&offset=0&limit=' + limit;
-        $http.get($scope.findDescendantsByConceptIdUrl).then(
+        $scope.findDescendantsByConceptIdUtility(conceptId, limit).then((response) => {
+            var descendants = response.data.items;
+            $scope.findDescendantsByConceptIdResult = JSON.stringify(descendants, null, 2);
+            $scope.findDescendantsByConceptIdCt = response.data.total;
+            var resultOnFHIR = $scope.convertDescendantsToFHIRFormat(descendants);
+            $scope.findDescendantsOnFHIR = JSON.stringify(resultOnFHIR, null, 2);
+            console.log("findDescendantsByConceptId Result on FHIR:", resultOnFHIR);
+            $scope.$digest(); // force detect ui changes
+        }).catch(error => console.error('Error: ', error));
+    }
+
+    // Find descendants of a concept by concept id and returns descendants in a Promise
+    $scope.findDescendantsByConceptIdUtility = function(conceptId, limit) {
+        return new Promise((resolve, reject) => {
+
+            // Make the HTTP Call
+            var url = baseUrl + '/' + edition + '/' + version + '/concepts/' + conceptId + '/descendants?stated=false&offset=0&limit=' + limit;
+            $http.get(url).then(
+                // success
+                function(response) {
+                    console.log('Resolved descendants:', response.data.total);
+                    return resolve(response);
+                },
+                // error
+                function(response) {
+                    $scope.errorMsg = response;
+                });
+        });
+    }
+
+    // Find descendants of a concept by concept id and set the scrollable raw json result (should be used for concepts with 10'000+ descendants)
+    $scope.findLoadsOfDescendantsByConceptId = function(bigConceptId) {
+        console.debug('findLoadsOfDescendantsByConceptId, concept id: ' + bigConceptId);
+
+        var loadsOfDescendants = new Array();
+        var descendantOfChildrenPromises = new Array();
+        var limit = 10000; // max
+
+        // 1 get children of concept
+        var childrenURL = baseUrl + '/browser/' + edition + '/' + version + '/concepts/' + bigConceptId + '/children?form=inferred&includeDescendantCount=true';
+        $http.get(childrenURL).then(
             // success
             function(response) {
-                console.debug('  matches = ', response.data);
-                $scope.findDescendantsByConceptIdResult = JSON.stringify(response.data.items, null, 2);
-                $scope.findDescendantsByConceptIdCt = response.data.total;
-                $scope.convertDescendantsToFHIRFormat();
+                var children = response.data;
+                
+                children.forEach(child => {
+                    // 1.1 add children to result
+                    loadsOfDescendants.push(child);
+
+                    // 2 get descendants of each child
+                    if (child.descendantCount > 0) {
+                        descendantOfChildrenPromises.push($scope.findDescendantsByConceptIdUtility(child.id, limit));
+                    }
+                });
+
+                if (children.length > 0) {
+                    Promise.all(descendantOfChildrenPromises).then((responses) => {
+                        console.log('We are done calling all descendants.');
+                        responses.forEach(response => {
+                            var newTotalResult= loadsOfDescendants.concat(response.data.items);
+                            loadsOfDescendants = newTotalResult;
+                        });
+                        console.log(loadsOfDescendants);
+                        $scope.findLoadsDescendantsOnFHIR = $scope.convertDescendantsToFHIRFormat(loadsOfDescendants);
+                        console.log("Final resul on FHIR (findLoadsOfDescendantsByConceptId):", $scope.findLoadsDescendantsOnFHIR);
+                        $scope.$digest(); // force detect ui changes
+                    });
+                }
             },
             // error
             function(response) {
@@ -165,18 +224,16 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
     }
 
     // Converts result of findDescendantsByConceptId() into FHIR format
-    $scope.convertDescendantsToFHIRFormat = function() {
-        var descendants = JSON.parse($scope.findDescendantsByConceptIdResult)
+    $scope.convertDescendantsToFHIRFormat = function(descendantsNotOnFhir) {
         var descendantsOnFHIR = new Array();
-        descendants.forEach(descendant => {
+        descendantsNotOnFhir.forEach(descendant => {
             descendantsOnFHIR.push({
                 system: 'http://snomed.info/sct',
                 code: descendant.id,
                 display: descendant.pt.term
             })
         });
-        console.log("Descendants on FHIR: ", descendantsOnFHIR)
-        $scope.findDescendantsOnFHIR = JSON.stringify(descendantsOnFHIR, null, 2);
+        return descendantsOnFHIR;
     }
 
     // end

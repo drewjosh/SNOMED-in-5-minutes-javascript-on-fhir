@@ -189,10 +189,6 @@
                   class="btn btn-sm btn-warning" ng-click="clear()">Clear</button>
               </form>
               <br />
-              <div ng-show="findDescendantsByConceptIdUrl">
-                <div>URL:</div>
-                <pre class="pre-xy-scrollable" ng-bind="findDescendantsByConceptIdUrl"></pre>
-              </div>
               <div ng-show="findDescendantsByConceptIdResult">
                 <div>JSON Result: ({{findDescendantsByConceptIdCt}})</div>
                 <pre class="pre-xy-scrollable"
@@ -204,6 +200,24 @@
                 <pre class="pre-xy-scrollable"
                   style="background-color: lightgray"
                   ng-bind="findDescendantsOnFHIR"></pre>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Find descendants (10'000+) of a concept by concept id -->
+          <tr>
+            <td style="vertical-align: top">
+              <form>
+                <input ng-model="bigConceptId" placeholder="e.g. 109152007" /> &nbsp;
+                <button type="submit" class="btn btn-sm btn-primary"
+                  ng-click="findLoadsOfDescendantsByConceptId(bigConceptId)">Find Descendants (10'000+) By Concept Id (FHIR)</button>
+                &nbsp;
+                <button ng-show="findLoadsDescendantsOnFHIR"
+                  class="btn btn-sm btn-warning" ng-click="clear()">Clear</button>
+              </form>
+              <div ng-show="findLoadsDescendantsOnFHIR">
+                <p>Amount descendants total: {{findLoadsDescendantsOnFHIR.length}}</p>
+                <p>See console for results (FHIR)</p>
               </div>
             </td>
           </tr>
