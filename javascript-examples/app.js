@@ -32,6 +32,7 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
     $scope.findByQueryWithFilterUrl = null;
     $scope.findDescendantsByConceptIdResult = null;
     $scope.findDescendantsByConceptIdUrl = null;
+    $scope.findDescendantsOnFHIR = null
 
     // Clear error
     $scope.clearError = function() {
@@ -52,6 +53,7 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
         $scope.findByQueryWithFilterUrl = null;
         $scope.findDescendantsByConceptIdResult = null;
         $scope.findDescendantsByConceptIdUrl = null;
+        $scope.findDescendantsOnFHIR = null
     }
 
     // Find by query and set the scrollable raw json result
@@ -146,13 +148,29 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
             // success
             function(response) {
                 console.debug('  matches = ', response.data);
-                $scope.findDescendantsByConceptIdResult = JSON.stringify(response.data, null, 2);
-                $scope.findDescendantsByConceptIdCt = $scope.findDescendantsByConceptIdResult.total;
+                $scope.findDescendantsByConceptIdResult = JSON.stringify(response.data.items, null, 2);
+                $scope.findDescendantsByConceptIdCt = response.data.total;
+                $scope.convertDescendantsToFHIRFormat();
             },
             // error
             function(response) {
                 $scope.errorMsg = response;
             });
+    }
+
+    // Converts result of findDescendantsByConceptId() into FHIR format
+    $scope.convertDescendantsToFHIRFormat = function() {
+        var descendants = JSON.parse($scope.findDescendantsByConceptIdResult)
+        var descendantsOnFHIR = new Array();
+        descendants.forEach(descendant => {
+            descendantsOnFHIR.push({
+                system: 'http://snomed.info/sct',
+                code: descendant.id,
+                display: descendant.pt.term
+            })
+        });
+        console.log("Descendants on FHIR: ", descendantsOnFHIR)
+        $scope.findDescendantsOnFHIR = JSON.stringify(descendantsOnFHIR, null, 2);
     }
 
     // end
