@@ -239,21 +239,24 @@ myApp.controller('SimpleCtrl', function($scope, $http) {
                                 } else {
                                     console.log("Failed result", result);
                                     const failedConceptId = result.reason.data.data.parentConceptId
-                                    console.warn('Concept above limit: ', failedConceptId);
-                                    console.log('Trying to resolve again');
+                                    console.warn('Concept above limit, we add what we have: ', failedConceptId);
+                                    var newTotalResult= loadsOfDescendants.concat(result.reason.data.data.items);
+                                    loadsOfDescendants = newTotalResult;
 
-                                    var descendantOfChildrenPromises = new Array();
-                                    descendantOfChildrenPromises.push($scope.findLoadsOfDescendants(failedConceptId));
-                                    Promise.all(descendantOfChildrenPromises).then((results) => {
-                                        results.forEach(result => {
-                                            var moreDescendants= loadsOfDescendants.concat(result.reason.data.data.items);
-                                            loadsOfDescendants = moreDescendants;
-                                        });
-                                        return resolve(loadsOfDescendants);
-                                    }).catch((error) => {
-                                        console.error('Error:', error);
-                                        reject(error);
-                                    });
+                                    // console.log('Trying to resolve again');
+
+                                    // var descendantOfChildrenPromises = new Array();
+                                    // descendantOfChildrenPromises.push($scope.findLoadsOfDescendants(failedConceptId));
+                                    // Promise.all(descendantOfChildrenPromises).then((results) => {
+                                    //     results.forEach(result => {
+                                    //         var moreDescendants= loadsOfDescendants.concat(result.reason.data.data.items);
+                                    //         loadsOfDescendants = moreDescendants;
+                                    //     });
+                                    //     return resolve(loadsOfDescendants);
+                                    // }).catch((error) => {
+                                    //     console.error('Error:', error);
+                                    //     reject(error);
+                                    // });
                                 }
                             });
                             return resolve(loadsOfDescendants);
